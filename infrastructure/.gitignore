@@ -1,0 +1,34 @@
+# Dependencies
+node_modules/
+
+# CDK output
+cdk.out/
+cdk.out2/
+
+# Build output
+*.js
+*.d.ts
+*.js.map
+!jest.config.js
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# TypeScript cache
+*.tsbuildinfo
+
+# Logs
+*.log
+npm-debug.log*

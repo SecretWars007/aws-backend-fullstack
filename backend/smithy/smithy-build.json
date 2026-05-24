@@ -1,0 +1,18 @@
+{
+  "version": "1.0",
+  "sources": ["./"],
+  "maven": {
+    "dependencies": [
+      "software.amazon.smithy:smithy-openapi:1.50.0",
+      "software.amazon.smithy:smithy-aws-traits:1.50.0"
+    ]
+  },
+  "plugins": {
+    "openapi": {
+      "service": "com.yape.bcp#YapeApi",
+      "protocol": "aws.protocols#restJson1",
+      "defaultBlobFormat": "byte",
+      "outputDirectory": "../generated/openapi"
+    }
+  }
+}
