@@ -1,0 +1,149 @@
+version: '3.9'
+
+services:
+  # ─── Databases ───────────────────────────────────────────────────────────────
+  device-db:
+    image: postgres:16-alpine
+    container_name: zappi_device_db
+    environment:
+      POSTGRES_DB: device_db
+      POSTGRES_USER: zappi
+      POSTGRES_PASSWORD: zappipass
+    ports:
+      - '5432:5432'
+    volumes:
+      - device_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U zappi -d device_db']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  customer-db:
+    image: postgres:16-alpine
+    container_name: zappi_customer_db
+    environment:
+      POSTGRES_DB: customer_db
+      POSTGRES_USER: zappi
+      POSTGRES_PASSWORD: zappipass
+    ports:
+      - '5433:5432'
+    volumes:
+      - customer_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U zappi -d customer_db']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  wallet-db:
+    image: postgres:16-alpine
+    container_name: zappi_wallet_db
+    environment:
+      POSTGRES_DB: wallet_db
+      POSTGRES_USER: zappi
+      POSTGRES_PASSWORD: zappipass
+    ports:
+      - '5434:5432'
+    volumes:
+      - wallet_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U zappi -d wallet_db']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: zappi_redis
+    ports:
+      - '6379:6379'
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ─── Microservices ───────────────────────────────────────────────────────────
+  device-service:
+    build:
+      context: ./device-service
+      dockerfile: Dockerfile
+    container_name: zappi_device_service
+    ports:
+      - '3001:3001'
+    environment:
+      PORT: 3001
+      MOCK_MODE: 'true'
+      NODE_ENV: development
+      DB_HOST: device-db
+      DB_PORT: 5432
+      DB_NAME: device_db
+      DB_USER: zappi
+      DB_PASS: zappipass
+      JWT_DEVICE_SECRET: zappi-device-secret-key-change-in-prod
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      device-db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  customer-service:
+    build:
+      context: ./customer-service
+      dockerfile: Dockerfile
+    container_name: zappi_customer_service
+    ports:
+      - '3002:3002'
+    environment:
+      PORT: 3002
+      MOCK_MODE: 'true'
+      NODE_ENV: development
+      DB_HOST: customer-db
+      DB_PORT: 5432
+      DB_NAME: customer_db
+      DB_USER: zappi
+      DB_PASS: zappipass
+      JWT_DEVICE_SECRET: zappi-device-secret-key-change-in-prod
+      JWT_USER_SECRET: zappi-user-secret-key-change-in-prod
+      REDIS_URL: redis://redis:6379
+      COGNITO_USER_POOL_ID: us-east-1_CHANGEME
+      COGNITO_CLIENT_ID: CHANGEME
+      AWS_REGION: us-east-1
+    depends_on:
+      customer-db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  wallet-service:
+    build:
+      context: ./wallet-service
+      dockerfile: Dockerfile
+    container_name: zappi_wallet_service
+    ports:
+      - '3003:3003'
+    environment:
+      PORT: 3003
+      MOCK_MODE: 'true'
+      NODE_ENV: development
+      DB_HOST: wallet-db
+      DB_PORT: 5432
+      DB_NAME: wallet_db
+      DB_USER: zappi
+      DB_PASS: zappipass
+      JWT_DEVICE_SECRET: zappi-device-secret-key-change-in-prod
+      JWT_USER_SECRET: zappi-user-secret-key-change-in-prod
+      REDIS_URL: redis://redis:6379
+      CUSTOMER_SERVICE_URL: http://customer-service:3002
+    depends_on:
+      wallet-db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+volumes:
+  device_db_data:
+  customer_db_data:
+  wallet_db_data:

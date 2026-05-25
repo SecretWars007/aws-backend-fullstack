@@ -1,0 +1,13 @@
+import { Request, Response } from 'express';
+import { ICustomerRepository } from '../../domain/repositories/ICustomerRepository';
+export declare function getExtensionCatalogHandler(repo: ICustomerRepository): (req: Request, res: Response) => Promise<void>;
+export declare function validateUserHandler(repo: ICustomerRepository): (req: Request, res: Response) => Promise<void>;
+export declare function validateOtpHandler(repo: ICustomerRepository): (req: Request, res: Response) => Promise<void>;
+export declare function initFaceRecognitionHandler(repo: ICustomerRepository): (req: Request, res: Response) => Promise<void>;
+export declare function executeFaceRecognitionHandler(repo: ICustomerRepository): (req: Request, res: Response) => Promise<void>;
+export declare function registerReferenceCodeHandler(repo: ICustomerRepository): (req: Request, res: Response) => Promise<void>;
+export declare function createAccountHandler(repo: ICustomerRepository, walletServiceUrl: string): (req: Request, res: Response) => Promise<void>;
+export declare function loginHandler(repo: ICustomerRepository): (req: Request, res: Response) => Promise<void>;
+export declare function getProfileParametersHandler(repo: ICustomerRepository): (req: Request, res: Response) => Promise<void>;
+export declare function welcomeReferenceHandler(req: Request, res: Response): void;
+export declare function getInternalCustomerByPhoneHandler(repo: ICustomerRepository): (req: Request, res: Response) => Promise<void>;

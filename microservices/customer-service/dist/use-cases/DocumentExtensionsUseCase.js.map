@@ -1,0 +1,1 @@
+{"version":3,"file":"DocumentExtensionsUseCase.js","sourceRoot":"","sources":["../../src/use-cases/DocumentExtensionsUseCase.ts"],"names":[],"mappings":";;;AAGA,MAAa,yBAAyB;IACpC,YAA6B,YAAiC;QAAjC,iBAAY,GAAZ,YAAY,CAAqB;IAAG,CAAC;IAElE,KAAK,CAAC,OAAO;QACX,MAAM,UAAU,GAAG,MAAM,IAAI,CAAC,YAAY,CAAC,aAAa,EAAE,CAAC;QAC3D,OAAO,EAAE,UAAU,EAAE,CAAC;IACxB,CAAC;CACF;AAPD,8DAOC"}

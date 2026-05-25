@@ -1,0 +1,55 @@
+config:
+  target: 'http://localhost:3001' # Default target, can be overridden with --target flag in CLI
+  phases:
+    - duration: 60
+      arrivalRate: 5
+      rampTo: 50
+      name: 'Ramp-up phase: Warm up server connections'
+    - duration: 120
+      arrivalRate: 50
+      name: 'Sustained load phase: Validate normal operating load'
+    - duration: 60
+      arrivalRate: 50
+      rampTo: 166 # 10,000 requests per minute peak
+      name: 'Spike load phase: Max load test up to peak capacity'
+  
+  defaults:
+    headers:
+      Content-Type: 'application/json'
+      Connection: 'keep-alive'
+
+scenarios:
+  # Scenario 1: Device Identification Flow (Port 3001)
+  - name: 'Device Identification (Hot path)'
+    flow:
+      - post:
+          url: '/V1/device/identification'
+          json:
+            device_id: 'artillery-device-{{ $randomString() }}'
+            device_type: 'IOS'
+            product: 'ZappiApp'
+            app_version: '2.0.0'
+          expect:
+            - statusCode: 200
+            - contentType: json
+
+  # Scenario 2: Register Extensions Catalog Lookup (Port 3002)
+  - name: 'Customer Extensions Catalog Lookup'
+    flow:
+      - post:
+          url: 'http://localhost:3002/V1/client/device/register/extension/get'
+          json:
+            auth_token: 'MOCK_DEVICE_JWT_TOKEN' # Put a valid JWT in production testing
+            certified_id: 3
+          expect:
+            - statusCode: 200
+
+  # Scenario 3: Wallet Recharge Parameters Lookup (Port 3003)
+  - name: 'Wallet Recharge Parameters Catalog Lookup'
+    flow:
+      - post:
+          url: 'http://localhost:3003/V1/recharge/parameters/get'
+          json:
+            auth_token: 'MOCK_DEVICE_JWT_TOKEN' # Put a valid JWT in production testing
+          expect:
+            - statusCode: 200
