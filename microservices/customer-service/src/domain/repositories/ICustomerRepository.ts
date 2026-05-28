@@ -34,6 +34,9 @@ export interface ICustomerRepository {
   updateReferenceCode(id: number, code: string): Promise<void>;
 
   // Complete Registration & Cognito Integration
+  registerInCognito(cellphone: string, email: string, pin: string, cic: string, documentNumber: string): Promise<string>;
+  rollbackCognitoRegistration(cellphone: string): Promise<void>;
+
   completeCustomerRegistration(
     id: number,
     data: {

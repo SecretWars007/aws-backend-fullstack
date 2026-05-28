@@ -162,7 +162,7 @@ export class PgWalletRepository implements IWalletRepository {
 
   async createTransferSession(customerId: number, cellphone: string, amount: number, token: string): Promise<TransferSession> {
     const pool = getPool();
-    const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 min expiry
+    const expiresAt = new Date(Date.now() + 3 * 60 * 1000); // 3 min expiry
     // Delete existing sessions
     await pool.query('DELETE FROM transfer_sessions WHERE customer_id = $1', [customerId]);
 

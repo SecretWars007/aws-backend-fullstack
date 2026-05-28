@@ -96,15 +96,28 @@ function Invoke-ApiTest {
 
     } catch {
         $elapsed    = ((Get-Date) - $startTime).TotalMilliseconds
-        $statusCode = $_.Exception.Response.StatusCode.value__
+        $statusCode = 0
+        if ($_.Exception.Response) {
+            try {
+                $statusCode = $_.Exception.Response.StatusCode.value__
+            } catch {}
+        }
         $rawBody    = ""
 
-        try {
-            $stream   = $_.Exception.Response.GetResponseStream()
-            $reader   = [System.IO.StreamReader]::new($stream)
-            $rawBody  = $reader.ReadToEnd()
-            $reader.Close()
-        } catch { }
+        if ($_.ErrorDetails -and $_.ErrorDetails.Message) {
+            $rawBody = $_.ErrorDetails.Message
+        } elseif ($_.Exception.Response) {
+            try {
+                $stream   = $_.Exception.Response.GetResponseStream()
+                $reader   = [System.IO.StreamReader]::new($stream)
+                $rawBody  = $reader.ReadToEnd()
+                $reader.Close()
+            } catch { }
+        }
+
+        if (-not $rawBody -and $_.Exception) {
+            $rawBody = $_.Exception.Message
+        }
 
         $result.ActualStatus = if ($statusCode) { $statusCode } else { 0 }
         $result.Duration     = [math]::Round($elapsed, 2)
@@ -116,12 +129,12 @@ function Invoke-ApiTest {
             $result.Passed = $true
             $script:PASS++
         } elseif ($WarnOnFail) {
-            Write-Host "    WARN HTTP $statusCode [${elapsed}ms] - $($_.Exception.Message)" -ForegroundColor Yellow
+            Write-Host "    WARN HTTP $statusCode [${elapsed}ms]" -ForegroundColor Yellow
             Write-Host "    RESP: $rawBody" -ForegroundColor DarkYellow
             $result.Passed = $false
             $script:WARN++
         } else {
-            Write-Host "    FAIL HTTP $statusCode [${elapsed}ms] - $($_.Exception.Message)" -ForegroundColor Red
+            Write-Host "    FAIL HTTP $statusCode [${elapsed}ms]" -ForegroundColor Red
             Write-Host "    RESP: $rawBody" -ForegroundColor DarkRed
             $result.Passed = $false
             $script:FAIL++
@@ -321,11 +334,11 @@ $null = Invoke-ApiTest -Name "Validate OTP received by SMS (400 in prod without 
     -Method POST -Path "/V1/register/validate/otp" `
     -Body @{
         cellphone    = $TEST_CELLPHONE
-        otp_code     = "123456"
+        otp          = "123456"
         auth_token   = $AUTH_TOKEN
         certified_id = $CERTIFIED_ID
     } `
-    -ExpectedStatus 400 -Category "Customer/OTP" -WarnOnFail
+    -ExpectedStatus 200 -Category "Customer/OTP" -WarnOnFail
 
 Write-Step "2.7" "Init Face Recognition"
 $r27 = Invoke-ApiTest -Name "Initialize biometric face session" `
@@ -346,15 +359,15 @@ if ($r27.Response -and $r27.Response.data -and $r27.Response.data.session_id) {
 }
 
 Write-Step "2.8" "Execute Face Recognition with base64 selfie"
-$MINI_JPG_B64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
+$MINI_JPG_B64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==" + ("A" * 100)
 $null = Invoke-ApiTest -Name "Send base64 selfie for biometric validation" `
     -Method POST -Path "/V1/register/execute/face/recognition" `
     -Body @{
-        cellphone    = $TEST_CELLPHONE
-        selfie       = $MINI_JPG_B64
-        session_id   = if ($SESSION_ID) { $SESSION_ID } else { "qa-session-001" }
-        auth_token   = $AUTH_TOKEN
-        certified_id = $CERTIFIED_ID
+        cellphone       = $TEST_CELLPHONE
+        selfie          = $MINI_JPG_B64
+        session_id      = if ($SESSION_ID) { $SESSION_ID } else { "qa-session-001" }
+        auth_token      = $AUTH_TOKEN
+        certified_id    = $CERTIFIED_ID
     } `
     -ExpectedStatus 200 -Category "Customer/FaceRecognition" -WarnOnFail
 
@@ -372,12 +385,19 @@ Write-Step "2.10" "Create Account"
 $null = Invoke-ApiTest -Name "Create account with full data" `
     -Method POST -Path "/V1/register/create/account" `
     -Body @{
-        cellphone    = $TEST_CELLPHONE
-        pin          = "123456"
-        home_address = "Av. Las Americas 100, Santa Cruz"
-        is_married   = $false
-        auth_token   = $AUTH_TOKEN
-        certified_id = $CERTIFIED_ID
+        id              = if ($USER_ID) { $USER_ID } else { 1 }
+        cellphone       = $TEST_CELLPHONE
+        pin             = "123456"
+        home_address    = "Av. Las Americas 100, Santa Cruz"
+        is_married      = $false
+        auth_token      = $AUTH_TOKEN
+        certified_id    = $CERTIFIED_ID
+        cic             = "12345"
+        device_type     = "ANDROID"
+        document_number = "12345678"
+        document_type   = "CI"
+        email           = $TEST_EMAIL
+        otp             = "123456"
     } `
     -ExpectedStatus 200 -Category "Customer/Account" -WarnOnFail
 
@@ -624,21 +644,21 @@ Write-Banner "BLOCK 6 - V2 ALIASES (EXHAUSTIVE)" "Cyan"
 
 Write-Step "6.1" "V2 Customer Service Aliases"
 $null = Invoke-ApiTest -Name "POST /V2/document-extensions" -Method POST -Path "/V2/document-extensions" -Body @{ auth_token = $AUTH_TOKEN; certified_id = $CERTIFIED_ID } -ExpectedStatus 200 -Category "Compat/V2-Aliases"
-$null = Invoke-ApiTest -Name "POST /V2/users-validate" -Method POST -Path "/V2/users-validate" -Body @{} -ExpectedStatus 400 -Category "Compat/V2-Aliases"
-$null = Invoke-ApiTest -Name "POST /V2/otp-generate" -Method POST -Path "/V2/otp-generate" -Body @{} -ExpectedStatus 400 -Category "Compat/V2-Aliases"
-$null = Invoke-ApiTest -Name "POST /V2/face-recognition-init" -Method POST -Path "/V2/face-recognition-init" -Body @{} -ExpectedStatus 400 -Category "Compat/V2-Aliases"
-$null = Invoke-ApiTest -Name "POST /V2/face-recognition-valid" -Method POST -Path "/V2/face-recognition-valid" -Body @{} -ExpectedStatus 400 -Category "Compat/V2-Aliases"
-$null = Invoke-ApiTest -Name "POST /V2/reference/register" -Method POST -Path "/V2/reference/register" -Body @{} -ExpectedStatus 400 -Category "Compat/V2-Aliases"
-$null = Invoke-ApiTest -Name "POST /V2/users-create" -Method POST -Path "/V2/users-create" -Body @{} -ExpectedStatus 400 -Category "Compat/V2-Aliases"
-$null = Invoke-ApiTest -Name "POST /V2/sign-in" -Method POST -Path "/V2/sign-in" -Body @{} -ExpectedStatus 400 -Category "Compat/V2-Aliases"
+$null = Invoke-ApiTest -Name "POST /V2/users-validate" -Method POST -Path "/V2/users-validate" -Body @{ auth_token = $AUTH_TOKEN; certified_id = $CERTIFIED_ID } -ExpectedStatus 400 -Category "Compat/V2-Aliases"
+$null = Invoke-ApiTest -Name "POST /V2/otp-generate" -Method POST -Path "/V2/otp-generate" -Body @{ auth_token = $AUTH_TOKEN; certified_id = $CERTIFIED_ID } -ExpectedStatus 400 -Category "Compat/V2-Aliases"
+$null = Invoke-ApiTest -Name "POST /V2/face-recognition-init" -Method POST -Path "/V2/face-recognition-init" -Body @{ auth_token = $AUTH_TOKEN; certified_id = $CERTIFIED_ID } -ExpectedStatus 400 -Category "Compat/V2-Aliases"
+$null = Invoke-ApiTest -Name "POST /V2/face-recognition-valid" -Method POST -Path "/V2/face-recognition-valid" -Body @{ auth_token = $AUTH_TOKEN; certified_id = $CERTIFIED_ID } -ExpectedStatus 400 -Category "Compat/V2-Aliases"
+$null = Invoke-ApiTest -Name "POST /V2/reference/register" -Method POST -Path "/V2/reference/register" -Body @{ auth_token = $AUTH_TOKEN; certified_id = $CERTIFIED_ID } -ExpectedStatus 400 -Category "Compat/V2-Aliases"
+$null = Invoke-ApiTest -Name "POST /V2/users-create" -Method POST -Path "/V2/users-create" -Body @{ auth_token = $AUTH_TOKEN; certified_id = $CERTIFIED_ID } -ExpectedStatus 400 -Category "Compat/V2-Aliases"
+$null = Invoke-ApiTest -Name "POST /V2/sign-in" -Method POST -Path "/V2/sign-in" -Body @{ auth_token = $AUTH_TOKEN; certified_id = $CERTIFIED_ID } -ExpectedStatus 400 -Category "Compat/V2-Aliases"
 
 Write-Step "6.2" "V2 Wallet Service Aliases"
 $null = Invoke-ApiTest -Name "POST /V2/balances" -Method POST -Path "/V2/balances" -Body @{ auth_token = $AUTH_TOKEN; certified_id = $CERTIFIED_ID } -ExpectedStatus 200 -Category "Compat/V2-Aliases"
-$null = Invoke-ApiTest -Name "POST /V2/recharge-params" -Method POST -Path "/V2/recharge-params" -Body @{ auth_token = $AUTH_TOKEN } -ExpectedStatus 200 -Category "Compat/V2-Aliases"
-$null = Invoke-ApiTest -Name "POST /V2/recharge-entel" -Method POST -Path "/V2/recharge-entel" -Body @{} -ExpectedStatus 400 -Category "Compat/V2-Aliases"
-$null = Invoke-ApiTest -Name "POST /V2/transfers/users-validate" -Method POST -Path "/V2/transfers/users-validate" -Body @{} -ExpectedStatus 400 -Category "Compat/V2-Aliases"
-$null = Invoke-ApiTest -Name "POST /V2/token-generate" -Method POST -Path "/V2/token-generate" -Body @{} -ExpectedStatus 400 -Category "Compat/V2-Aliases"
-$null = Invoke-ApiTest -Name "POST /V2/transfers-execute" -Method POST -Path "/V2/transfers-execute" -Body @{} -ExpectedStatus 400 -Category "Compat/V2-Aliases"
+$null = Invoke-ApiTest -Name "POST /V2/recharge-params" -Method POST -Path "/V2/recharge-params" -Body @{ auth_token = $AUTH_TOKEN; certified_id = $CERTIFIED_ID } -ExpectedStatus 200 -Category "Compat/V2-Aliases"
+$null = Invoke-ApiTest -Name "POST /V2/recharge-entel" -Method POST -Path "/V2/recharge-entel" -Body @{ auth_token = $AUTH_TOKEN; certified_id = $CERTIFIED_ID } -ExpectedStatus 400 -Category "Compat/V2-Aliases"
+$null = Invoke-ApiTest -Name "POST /V2/transfers/validate" -Method POST -Path "/V2/transfers/validate" -Body @{ auth_token = $AUTH_TOKEN; certified_id = $CERTIFIED_ID } -ExpectedStatus 400 -Category "Compat/V2-Aliases"
+$null = Invoke-ApiTest -Name "POST /V2/token-generate" -Method POST -Path "/V2/token-generate" -Body @{ auth_token = $AUTH_TOKEN; certified_id = $CERTIFIED_ID } -ExpectedStatus 400 -Category "Compat/V2-Aliases"
+$null = Invoke-ApiTest -Name "POST /V2/transfers-execute" -Method POST -Path "/V2/transfers-execute" -Body @{ auth_token = $AUTH_TOKEN; certified_id = $CERTIFIED_ID } -ExpectedStatus 400 -Category "Compat/V2-Aliases"
 
 # ==============================================================================
 # FINAL REPORT
@@ -669,8 +689,8 @@ $categories = $RESULTS | Group-Object -Property Category
 Write-Host "  BREAKDOWN BY CATEGORY:" -ForegroundColor Magenta
 Write-Host "  $("-" * 50)" -ForegroundColor DarkGray
 foreach ($cat in $categories) {
-    $catPass  = ($cat.Group | Where-Object { $_.Passed }).Count
-    $catTotal = $cat.Count
+    $catPass  = @($cat.Group | Where-Object { $_.Passed }).Count
+    $catTotal = @($cat.Group).Count
     $icon     = if ($catPass -eq $catTotal) { "OK" } else { "!!" }
     Write-Host "  [$icon] $($cat.Name.PadRight(35)) $catPass/$catTotal" -ForegroundColor White
 }

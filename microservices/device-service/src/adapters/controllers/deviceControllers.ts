@@ -13,15 +13,19 @@ function success(res: Response, data: unknown, message = 'OK') {
 }
 
 function unauthorized(res: Response, message = 'Token de dispositivo inválido o expirado') {
-  return res.status(401).json({ state: -3, message, data: null });
+  return res.status(401).json({ state: 1, message, code: 'UNAUTHORIZED' });
 }
 
 function notFound(res: Response, message = 'Dispositivo no registrado') {
-  return res.status(404).json({ state: -1, message, data: null });
+  return res.status(404).json({ state: 1, message, code: 'NOT_FOUND' });
 }
 
 function serverError(res: Response, message = 'Error interno del servidor') {
-  return res.status(500).json({ state: -99, message, data: null });
+  return res.status(500).json({ state: -1, message, code: 'INTERNAL_SERVER_ERROR' });
+}
+
+function businessError(res: Response, message: string, code: string) {
+  return res.status(400).json({ state: 1, message, code });
 }
 
 // ─── POST /V1/device/identification ──────────────────────────────────────────
@@ -34,7 +38,7 @@ export function deviceIdentifyHandler(repo: IDeviceRepository) {
     } catch (err: any) {
       console.error('[DeviceIdentify]', err.message);
       if (err.message.startsWith('Validation error')) {
-        res.status(400).json({ state: -2, message: err.message, data: null });
+        businessError(res, err.message, 'VALIDATION_ERROR');
         return;
       }
       serverError(res);
@@ -56,7 +60,7 @@ export function deviceAuthHandler(repo: IDeviceRepository) {
         return;
       }
       if (err.message.startsWith('Validation error')) {
-        res.status(400).json({ state: -2, message: err.message, data: null });
+        businessError(res, err.message, 'VALIDATION_ERROR');
         return;
       }
       serverError(res);

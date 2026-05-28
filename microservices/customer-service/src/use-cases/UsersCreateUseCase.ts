@@ -58,7 +58,7 @@ export class UsersCreateUseCase {
       throw new Error(`Validation error: ${parsed.error.message}`);
     }
 
-    const { id, cellphone, cic, home_address, pin, email, is_married } = parsed.data;
+    const { id, cellphone, cic, home_address, pin, email, is_married, document_number } = parsed.data;
 
     // Check if the user exists
     const customer = await this.customerRepo.findCustomerById(id);
@@ -79,18 +79,32 @@ export class UsersCreateUseCase {
     // Hash the PIN (OWASP A02 Cryptographic Failures)
     const pinHash = crypto.createHash('sha256').update(pin).digest('hex');
 
-    // In a real system, we register the user in Cognito and get their Sub ID.
-    // In mock mode, we generate a mock Cognito Sub UUID.
-    const cognitoSub = `us-east-1_${crypto.randomUUID()}`;
+    // 1. Register the user in Cognito to get their Sub ID
+    let cognitoSub: string;
+    try {
+      cognitoSub = await this.customerRepo.registerInCognito(cellphone, email, pin, cic, document_number);
+    } catch (err: any) {
+      if (err.name === 'UsernameExistsException') {
+        throw new Error('USER_ALREADY_EXISTS');
+      }
+      throw new Error(`Cognito Registration Failed: ${err.message}`);
+    }
 
-    // Complete the customer registration
-    await this.customerRepo.completeCustomerRegistration(id, {
-      cic,
-      homeAddress: home_address,
-      pinHash,
-      cognitoSub,
-      isMarried: is_married,
-    });
+    try {
+      // 2. Complete the customer registration in Postgres
+      await this.customerRepo.completeCustomerRegistration(id, {
+        cic,
+        homeAddress: home_address,
+        pinHash,
+        cognitoSub,
+        isMarried: is_married,
+      });
+    } catch (err: any) {
+      // Rollback Cognito if DB update fails
+      console.error('[DB Update Failed] Rolling back Cognito...', err);
+      await this.customerRepo.rollbackCognitoRegistration(cellphone);
+      throw new Error('ACCOUNT_CREATION_FAILED');
+    }
 
     // Call the wallet-service to create the wallet cards/account
     try {

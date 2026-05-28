@@ -42,7 +42,7 @@ export function createApp(): express.Application {
     max: process.env.NODE_ENV === 'test' ? 10_000 : 100,
     standardHeaders: true,
     legacyHeaders: false,
-    message: { state: -5, message: 'Demasiadas solicitudes. Intente más tarde.', data: null },
+    message: { state: 1, message: 'Demasiadas solicitudes. Intente más tarde.', code: 'TOO_MANY_REQUESTS' },
   });
   app.use(limiter);
 
@@ -77,13 +77,13 @@ export function createApp(): express.Application {
 
   // ── 404 handler ───────────────────────────────────────────────────────────
   app.use((_req, res) => {
-    res.status(404).json({ state: -4, message: 'Endpoint no encontrado', data: null });
+    res.status(404).json({ state: 1, message: 'Endpoint no encontrado en Device Service', code: 'NOT_FOUND' });
   });
 
   // ── Global error handler ──────────────────────────────────────────────────
   app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
     console.error('[Unhandled Error]', err.message);
-    res.status(500).json({ state: -99, message: 'Error interno del servidor', data: null });
+    res.status(500).json({ state: -1, message: 'Error interno del servidor', code: 'INTERNAL_SERVER_ERROR' });
   });
 
   return app;

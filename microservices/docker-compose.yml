@@ -13,6 +13,7 @@ services:
       - '5432:5432'
     volumes:
       - device_db_data:/var/lib/postgresql/data
+      - ./device-service/src/adapters/repositories/postgres/schema.sql:/docker-entrypoint-initdb.d/schema.sql
     healthcheck:
       test: ['CMD-SHELL', 'pg_isready -U zappi -d device_db']
       interval: 5s
@@ -30,6 +31,7 @@ services:
       - '5433:5432'
     volumes:
       - customer_db_data:/var/lib/postgresql/data
+      - ./customer-service/src/adapters/repositories/postgres/schema.sql:/docker-entrypoint-initdb.d/schema.sql
     healthcheck:
       test: ['CMD-SHELL', 'pg_isready -U zappi -d customer_db']
       interval: 5s
@@ -47,6 +49,7 @@ services:
       - '5434:5432'
     volumes:
       - wallet_db_data:/var/lib/postgresql/data
+      - ./wallet-service/src/adapters/repositories/postgres/schema.sql:/docker-entrypoint-initdb.d/schema.sql
     healthcheck:
       test: ['CMD-SHELL', 'pg_isready -U zappi -d wallet_db']
       interval: 5s

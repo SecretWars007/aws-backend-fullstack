@@ -2,7 +2,14 @@ import { ICustomerRepository } from '../../../domain/repositories/ICustomerRepos
 import { Customer, Extension, OtpSession, FaceSession } from '../../../domain/entities/Customer';
 import { getPool } from './pgPool';
 import { signUserToken } from '../../../infrastructure/crypto';
-import { CognitoIdentityProviderClient, AdminInitiateAuthCommand } from '@aws-sdk/client-cognito-identity-provider';
+import { 
+  CognitoIdentityProviderClient, 
+  AdminInitiateAuthCommand,
+  AdminCreateUserCommand,
+  AdminSetUserPasswordCommand,
+  AdminDeleteUserCommand,
+  MessageActionType
+} from '@aws-sdk/client-cognito-identity-provider';
 import crypto from 'crypto';
 
 export class PgCustomerRepository implements ICustomerRepository {
@@ -193,6 +200,68 @@ export class PgCustomerRepository implements ICustomerRepository {
        WHERE id = $6`,
       [data.cic, data.homeAddress, data.pinHash, data.cognitoSub, data.isMarried, id]
     );
+  }
+
+  async registerInCognito(cellphone: string, email: string, pin: string, cic: string, documentNumber: string): Promise<string> {
+    const cognitoUserPoolId = process.env.COGNITO_USER_POOL_ID;
+    if (!cognitoUserPoolId || process.env.MOCK_MODE === 'true') {
+      return `us-east-1_${crypto.randomUUID()}`; // Mock sub
+    }
+
+    const e164Phone = cellphone.startsWith('+') ? cellphone : `+591${cellphone}`;
+    const cognitoPassword = pin.length >= 6 ? pin : pin.padEnd(6, '0');
+
+    const userAttributes = [
+      { Name: 'email', Value: email },
+      { Name: 'phone_number', Value: e164Phone },
+      { Name: 'email_verified', Value: 'true' },
+      { Name: 'phone_number_verified', Value: 'true' },
+      { Name: 'custom:cic', Value: cic },
+      { Name: 'custom:document_number', Value: documentNumber },
+    ];
+
+    const createResp = await this.cognitoClient.send(
+      new AdminCreateUserCommand({
+        UserPoolId: cognitoUserPoolId,
+        Username: e164Phone,
+        UserAttributes: userAttributes,
+        MessageAction: MessageActionType.SUPPRESS,
+        TemporaryPassword: cognitoPassword,
+      })
+    );
+
+    const sub = createResp.User?.Attributes?.find((a) => a.Name === 'sub')?.Value ?? '';
+
+    await this.cognitoClient.send(
+      new AdminSetUserPasswordCommand({
+        UserPoolId: cognitoUserPoolId,
+        Username: e164Phone,
+        Password: cognitoPassword,
+        Permanent: true,
+      })
+    );
+
+    return sub;
+  }
+
+  async rollbackCognitoRegistration(cellphone: string): Promise<void> {
+    const cognitoUserPoolId = process.env.COGNITO_USER_POOL_ID;
+    if (!cognitoUserPoolId || process.env.MOCK_MODE === 'true') {
+      return;
+    }
+
+    const e164Phone = cellphone.startsWith('+') ? cellphone : `+591${cellphone}`;
+
+    try {
+      await this.cognitoClient.send(
+        new AdminDeleteUserCommand({
+          UserPoolId: cognitoUserPoolId,
+          Username: e164Phone,
+        })
+      );
+    } catch (err: any) {
+      console.error('[Rollback Error] Failed to delete user from Cognito:', err.message);
+    }
   }
 
   async authenticate(cellphone: string, pin: string): Promise<{

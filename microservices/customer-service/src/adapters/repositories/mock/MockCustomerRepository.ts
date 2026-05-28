@@ -183,6 +183,14 @@ export class MockCustomerRepository implements ICustomerRepository {
     this.customers.set(id, customer);
   }
 
+  async registerInCognito(cellphone: string, email: string, pin: string, cic: string, documentNumber: string): Promise<string> {
+    return `us-east-1_mock-${crypto.randomUUID()}`;
+  }
+
+  async rollbackCognitoRegistration(cellphone: string): Promise<void> {
+    console.log(`[Mock Repo] Rolled back Cognito registration for ${cellphone}`);
+  }
+
   async authenticate(cellphone: string, pin: string): Promise<{
     privateToken: string;
     customer: Customer;
