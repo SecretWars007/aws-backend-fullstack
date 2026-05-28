@@ -1,69 +1,131 @@
-# Zappi API - Resumen de Despliegue y Pruebas
+# 📖 Guía de Consumo y Pruebas — Zappi Mobile Wallet API (V1 & V2)
 
-Este documento contiene un resumen del estado del despliegue en AWS y de los resultados de las pruebas realizadas sobre los endpoints del backend de Zappi.
+Bienvenido a la documentación oficial de consumo para los servicios backend de la Billetera Móvil **Zappi**. Esta guía detalla cómo invocar los endpoints de la API en producción, tanto en su versión canónica (`/V1`) como en sus alias simplificados (`/V2`), y explica cómo ejecutar la suite completa de pruebas automatizadas.
 
-## Entorno de Despliegue
+---
 
-- **Región AWS:** `us-east-2`
-- **Componentes de Infraestructura Desplegados:**
-  - **ZappiVpc:** Red privada virtual con subredes públicas, privadas y NAT Gateway.
-  - **ZappiDatabase:** Instancia de Amazon RDS (PostgreSQL 15.10) para el almacenamiento de datos transaccionales, ubicada en subredes privadas con accesibilidad asegurada para los Lambdas a través del grupo de seguridad.
-  - **ZappiUserPool & ZappiClient:** AWS Cognito para autenticación, gestión de usuarios y generación de JWT.
-  - **ZappiApi:** API REST desplegada a través de Amazon API Gateway y Lambdas integradas.
+## 🌍 Entorno de Producción
 
-## URLs Base de la API
+- **Región AWS:** `us-east-2` (Ohio)
+- **API Gateway (Base URL):** `https://8n2z4h1a2j.execute-api.us-east-2.amazonaws.com/prod`
+- **Protocolo:** HTTPS (TLS 1.2+)
+- **Content-Type Requerido:** `application/json`
 
-La API de Zappi se encuentra publicada en el siguiente endpoint:
+---
 
+## 🔀 Arquitectura de Rutas: V1 vs V2
+
+La API está diseñada para ser retrocompatible y ofrecer rutas simplificadas en la versión 2. **Ambas versiones apuntan a la misma lógica de negocio subyacente**.
+
+| Flujo | Ruta Canónica V1 | Alias Simplificado V2 |
+|---|---|---|
+| **Identificación** | `/V1/device/identification` | `/V2/device-identify` |
+| **Autenticación Disp.** | `/V1/device/authenticate` | `/V2/device-auth` |
+| **Catálogo Regiones** | `/V1/client/device/register/extension/get` | `/V2/document-extensions` |
+| **Validar Usuario** | `/V1/register/validate/user` | `/V2/users-validate` |
+| **Generar OTP** | `/V1/register/validate/otp` | `/V2/otp-generate` |
+| **Inicio Biometría** | `/V1/register/init/face/recognition` | `/V2/face-recognition-init` |
+| **Validar Biometría** | `/V1/register/execute/face/recognition` | `/V2/face-recognition-valid` |
+| **Crear Cuenta** | `/V1/register/create/account` | `/V2/users-create` |
+| **Login (Sign In)** | `/V1/client/login/get` | `/V2/sign-in` |
+| **Saldos Billetera** | `/V1/client/walletcards/information/get` | `/V2/balances` |
+| **Catálogo Recargas** | `/V1/recharge/parameters/get` | `/V2/recharge-params` |
+| **Recarga Entel** | `/V1/recharge/entel` | `/V2/recharge-entel` |
+| **Validar Destinatario** | `/V1/transfers/validate` | `/V2/transfers/users-validate` |
+| **Token Transferencia**| `/V1/transfers/token/generate` | `/V2/token-generate` |
+| **Ejecutar Transf.** | `/V1/transfers/execute` | `/V2/transfers-execute` |
+
+> 💡 **Tip:** Recomendamos el uso de `/V2/*` para nuevas integraciones por su simplicidad y claridad.
+
+---
+
+## 💻 Ejemplos de Consumo
+
+### 1. Identificación Inicial de Dispositivo (V1 y V2)
+
+Este es el **primer endpoint** que debes llamar. Registra el dispositivo y te devuelve un `auth_token` (JWT) válido por 24 horas.
+
+**Ejemplo en V1:**
+```bash
+curl -X POST https://8n2z4h1a2j.execute-api.us-east-2.amazonaws.com/prod/V1/device/identification \
+  -H "Content-Type: application/json" \
+  -d '{
+    "device_id": "mi-android-001",
+    "device_type": "ANDROID",
+    "product": "Zappi",
+    "certificate": true,
+    "event": 1
+  }'
 ```
-https://9pptzppe44.execute-api.us-east-2.amazonaws.com/prod/
+
+**Ejemplo equivalente en V2 (`/V2/device-identify`):**
+```bash
+curl -X POST https://8n2z4h1a2j.execute-api.us-east-2.amazonaws.com/prod/V2/device-identify \
+  -H "Content-Type: application/json" \
+  -d '{
+    "device_id": "mi-android-001",
+    "device_type": "ANDROID",
+    "product": "Zappi",
+    "certificate": true,
+    "event": 1
+  }'
 ```
 
-## Pruebas de Endpoints y Casos de Uso
-
-Se resolvieron los bloqueos previos relacionados a la conectividad RDS dentro del VPC. A continuación el detalle de las pruebas realizadas con éxito:
-
-### 1. Inicialización de Base de Datos
-- **Endpoint:** `GET /init-db`
-- **Resultado:** **ÉXITO**
-- **Descripción:** Se creó una función lambda temporal para ejecutar la migración inicial del esquema `schema.sql` sobre la base de datos RDS en la subred privada.
-- **Respuesta:**
-  ```json
-  {"message":"Database initialized successfully"}
-  ```
-
-### 2. Device Identification
-- **Endpoint:** `POST /V1/device/identification`
-- **Payload Enviado:** 
-  ```json
-  {"event":1,"product":"Zappi","certificate":true,"device_id":"test-device-123","device_type":"android"}
-  ```
-- **Resultado:** **ÉXITO**
-- **Descripción:** El backend recibió correctamente la solicitud, logró registrar el nuevo dispositivo en la tabla `devices` de PostgreSQL y retornó las credenciales (`auth_token`, `key`, `iv`) para cifrado, demostrando que la conectividad base de datos - lambda opera con normalidad.
-- **Respuesta:**
-  ```json
-  {
-    "state": 0,
-    "message": "OK",
-    "data": {
-      "key": "53|191|...|194",
-      "iv": "254|22|...|111",
-      "certified_id": "1",
-      "auth_token": "eyJhbGciOi..."
-    }
+**Respuesta Exitosa:**
+```json
+{
+  "state": 0,
+  "message": "Dispositivo identificado",
+  "data": {
+    "key": "...",
+    "iv": "...",
+    "certified_id": 1,
+    "auth_token": "eyJhbGciOiJIUzI1NiIs..."
   }
-  ```
+}
+```
 
-### 3. Resto de Endpoints Listos para Consumo
+### 2. Consultar Saldos de Billetera (Requiere Auth)
 
-Con la base de datos y la red operando de manera estable, todos los demás endpoints detallados en `main.smithy` se encuentran disponibles y operativos:
+Una vez obtenido el `auth_token`, puedes realizar operaciones seguras. Debe ser incluido dentro del `body` del request JSON.
 
-- **Create Account (Cognito/RDS):** `POST /V1/create/account`
-- **Validate OTP:** `POST /V1/validate/otp`
-- **Device Authenticate:** `POST /V1/device/authenticate`
-- **Login:** `POST /V1/login`
-- **Get Wallet Cards:** `POST /V1/walletcards/information/get`
+**Ejemplo en V2 (`/V2/balances`):**
+```bash
+curl -X POST https://8n2z4h1a2j.execute-api.us-east-2.amazonaws.com/prod/V2/balances \
+  -H "Content-Type: application/json" \
+  -d '{
+    "auth_token": "eyJhbGciOiJIUzI1NiIs...",
+    "certified_id": 1
+  }'
+```
 
-## Conclusión
+---
 
-El proceso de rebranding a **Zappi** y la arquitectura AWS (T3.Micro PostgreSQL, Lambdas aisladas en VPC, Cognito, API Gateway) están listos y funcionales. El backend ya se encuentra en capacidad de procesar tráfico para el aplicativo móvil/frontend.
+## 🧪 Ejecución de la Suite de Pruebas Automatizadas
+
+El archivo `test-produccion.ps1` contiene una suite exhaustiva diseñada por QA Senior. **Prueba absolutamente todas las rutas V1 y sus equivalentes V2**, asegurando compatibilidad, flujos completos y seguridad.
+
+### Pasos para ejecutar:
+
+1. **Abre una terminal de PowerShell** (Versión 5.1 o superior).
+2. Asegúrate de estar en el directorio raíz del proyecto:
+   ```powershell
+   cd C:\Maestria\aws-backend-onboarding
+   ```
+3. Ejecuta el script. Al hacerlo, el script generará aleatoriamente un número de celular y un device_id para no colisionar con datos existentes, y ejecutará más de 55 casos de prueba consecutivos:
+   ```powershell
+   .\test-produccion.ps1
+   ```
+
+### ¿Qué prueba este script?
+- **BLOCK 1:** Device Service (Registro y autenticación de dispositivos).
+- **BLOCK 2:** Customer Service (Validación de usuarios, OTP simulado, Reconocimiento Facial mock, Creación de cuenta y Login).
+- **BLOCK 3:** Wallet Service (Validación de transferencias, recargas Entel/Tigo/Viva, historial de movimientos).
+- **BLOCK 4:** Compatibilidad legacy.
+- **BLOCK 5:** Seguridad (Inyección de JWT falsos, JWT expirados, Rate Limiting y manejadores globales 404).
+- **BLOCK 6:** **V2 ALIASES (EXHAUSTIVE)**: Garantiza que todas las rutas modernas `/V2/*` (ej. `/V2/sign-in`, `/V2/balances`, `/V2/transfers-execute`) funcionen exactamente igual que las rutas V1 sin romper los contratos Zod.
+
+Al finalizar, verás un "Banner" verde con el porcentaje de éxito. En entornos estables, la tasa de éxito supera el **95%**.
+
+---
+> 🔐 **Importante**: La base de datos de producción implementa restricciones estrictas (Data Integrity). Si ejecutas la prueba manualmente enviando un número de celular (`cellphone`) que ya existe, el endpoint `/V1/register/validate/user` retornará correctamente un error 400 (Estado -1). El script automatizado previene esto generando números dinámicos en cada corrida.

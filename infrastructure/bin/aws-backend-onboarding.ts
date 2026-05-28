@@ -7,7 +7,6 @@ import { DatabaseStack } from '../lib/database-stack';
 import { CacheStack } from '../lib/cache-stack';
 import { AuthStack } from '../lib/auth-stack';
 import { EcsStack } from '../lib/ecs-stack';
-import { AlbStack } from '../lib/alb-stack';
 import { ApiStack } from '../lib/api-stack';
 
 const app = new cdk.App();
@@ -64,22 +63,11 @@ ecsStack.addDependency(databaseStack);
 ecsStack.addDependency(cacheStack);
 ecsStack.addDependency(authStack);
 
-// 7. Application Load Balancer Stack
-const albStack = new AlbStack(app, 'ZappiAlbStack', {
-  env,
-  vpc: networkStack.vpc,
-  deviceService: ecsStack.deviceService,
-  customerService: ecsStack.customerService,
-  walletService: ecsStack.walletService,
-});
-albStack.addDependency(networkStack);
-albStack.addDependency(ecsStack);
-
-// 8. API Gateway Stack
+// 7. API Gateway Stack
 const apiStack = new ApiStack(app, 'ZappiApiStack', {
   env,
   vpc: networkStack.vpc,
-  albDns: albStack.loadBalancer.loadBalancerDnsName,
+  albDns: ecsStack.loadBalancer.loadBalancerDnsName,
 });
 apiStack.addDependency(networkStack);
-apiStack.addDependency(albStack);
+apiStack.addDependency(ecsStack);

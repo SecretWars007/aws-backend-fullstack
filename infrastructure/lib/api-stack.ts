@@ -23,25 +23,24 @@ export class ApiStack extends cdk.Stack {
       },
     });
 
-    // Create HTTP integration to the ALB DNS address
-    // We use a proxy path mapping so the URI path is forwarded as-is
-    const albIntegration = new apigateway.HttpIntegration(
-      `http://${props.albDns}/{proxy}`,
-      {
-        httpMethod: 'ANY',
-        options: {
-          requestParameters: {
-            'integration.request.path.proxy': 'method.request.path.proxy',
-          },
-        },
-      }
-    );
-
     // Helper to create proxy resource under a root path (e.g. /V1/ or /V2/)
     const addProxyRoute = (rootPath: string) => {
       const resource = api.root.addResource(rootPath);
+      
+      const pathSpecificIntegration = new apigateway.HttpIntegration(
+        `http://${props.albDns}/${rootPath}/{proxy}`,
+        {
+          httpMethod: 'ANY',
+          options: {
+            requestParameters: {
+              'integration.request.path.proxy': 'method.request.path.proxy',
+            },
+          },
+        }
+      );
+
       const proxyResource = resource.addProxy({
-        defaultIntegration: albIntegration,
+        defaultIntegration: pathSpecificIntegration,
         anyMethod: true,
         defaultMethodOptions: {
           requestParameters: {

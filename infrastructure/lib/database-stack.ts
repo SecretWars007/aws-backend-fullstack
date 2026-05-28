@@ -39,7 +39,7 @@ export class DatabaseStack extends cdk.Stack {
     const createDbInstance = (name: string, dbName: string, secret: secretsmanager.ISecret) => {
       const instance = new rds.DatabaseInstance(this, `${name}Instance`, {
         engine: rds.DatabaseInstanceEngine.postgres({
-          version: rds.PostgresEngineVersion.VER_16_2,
+          version: rds.PostgresEngineVersion.of('16.6', '16'),
         }),
         instanceType: ec2.InstanceType.of(ec2.InstanceClass.T3, ec2.InstanceSize.MICRO),
         vpc,

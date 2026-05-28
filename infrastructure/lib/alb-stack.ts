@@ -90,19 +90,39 @@ export class AlbStack extends cdk.Stack {
       action: elbv2.ListenerAction.forward([deviceTargetGroup]),
     });
 
-    // Rule 2: Customer paths
-    this.listener.addAction('CustomerRule', {
+    // Rule 2: Customer paths - register
+    this.listener.addAction('CustomerRegisterRule', {
       priority: 20,
       conditions: [
         elbv2.ListenerCondition.pathPatterns([
           '/V1/register/*',
           '/V2/register/*',
           '/v1/register/*',
-          '/v2/register/*',
+          '/v2/register/*'
+        ]),
+      ],
+      action: elbv2.ListenerAction.forward([customerTargetGroup]),
+    });
+
+    // Rule 2b: Customer paths - client
+    this.listener.addAction('CustomerClientRule', {
+      priority: 21,
+      conditions: [
+        elbv2.ListenerCondition.pathPatterns([
           '/V1/client/*',
           '/V2/client/*',
           '/v1/client/*',
-          '/v2/client/*',
+          '/v2/client/*'
+        ]),
+      ],
+      action: elbv2.ListenerAction.forward([customerTargetGroup]),
+    });
+
+    // Rule 2c: Customer paths - profile
+    this.listener.addAction('CustomerProfileRule', {
+      priority: 22,
+      conditions: [
+        elbv2.ListenerCondition.pathPatterns([
           '/V1/profile/*',
           '/V2/profile/*',
           '/v1/profile/*',
@@ -112,23 +132,53 @@ export class AlbStack extends cdk.Stack {
       action: elbv2.ListenerAction.forward([customerTargetGroup]),
     });
 
-    // Rule 3: Wallet paths
-    this.listener.addAction('WalletRule', {
+    // Rule 3: Wallet paths - balances
+    this.listener.addAction('WalletBalancesRule', {
       priority: 30,
       conditions: [
         elbv2.ListenerCondition.pathPatterns([
           '/V1/balances/*',
           '/V2/balances/*',
           '/v1/balances/*',
-          '/v2/balances/*',
+          '/v2/balances/*'
+        ]),
+      ],
+      action: elbv2.ListenerAction.forward([walletTargetGroup]),
+    });
+
+    // Rule 3b: Wallet paths - transfers
+    this.listener.addAction('WalletTransfersRule', {
+      priority: 31,
+      conditions: [
+        elbv2.ListenerCondition.pathPatterns([
           '/V1/transfers/*',
           '/V2/transfers/*',
           '/v1/transfers/*',
-          '/v2/transfers/*',
+          '/v2/transfers/*'
+        ]),
+      ],
+      action: elbv2.ListenerAction.forward([walletTargetGroup]),
+    });
+
+    // Rule 3c: Wallet paths - recharge
+    this.listener.addAction('WalletRechargeRule', {
+      priority: 32,
+      conditions: [
+        elbv2.ListenerCondition.pathPatterns([
           '/V1/recharge/*',
           '/V2/recharge/*',
           '/v1/recharge/*',
-          '/v2/recharge/*',
+          '/v2/recharge/*'
+        ]),
+      ],
+      action: elbv2.ListenerAction.forward([walletTargetGroup]),
+    });
+
+    // Rule 3d: Wallet paths - walletcards
+    this.listener.addAction('WalletCardsRule', {
+      priority: 33,
+      conditions: [
+        elbv2.ListenerCondition.pathPatterns([
           '/V1/walletcards/*',
           '/V2/walletcards/*',
           '/v1/walletcards/*',
