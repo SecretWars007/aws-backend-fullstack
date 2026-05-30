@@ -134,6 +134,53 @@ class PgCustomerRepository {
            city = COALESCE(city, 'Santa Cruz')
        WHERE id = $6`, [data.cic, data.homeAddress, data.pinHash, data.cognitoSub, data.isMarried, id]);
     }
+    async registerInCognito(cellphone, email, pin, cic, documentNumber) {
+        const cognitoUserPoolId = process.env.COGNITO_USER_POOL_ID;
+        if (!cognitoUserPoolId || process.env.MOCK_MODE === 'true') {
+            return `us-east-1_${crypto_2.default.randomUUID()}`; // Mock sub
+        }
+        const e164Phone = cellphone.startsWith('+') ? cellphone : `+591${cellphone}`;
+        const cognitoPassword = pin.length >= 6 ? pin : pin.padEnd(6, '0');
+        const userAttributes = [
+            { Name: 'email', Value: email },
+            { Name: 'phone_number', Value: e164Phone },
+            { Name: 'email_verified', Value: 'true' },
+            { Name: 'phone_number_verified', Value: 'true' },
+            { Name: 'custom:cic', Value: cic },
+            { Name: 'custom:document_number', Value: documentNumber },
+        ];
+        const createResp = await this.cognitoClient.send(new client_cognito_identity_provider_1.AdminCreateUserCommand({
+            UserPoolId: cognitoUserPoolId,
+            Username: e164Phone,
+            UserAttributes: userAttributes,
+            MessageAction: client_cognito_identity_provider_1.MessageActionType.SUPPRESS,
+            TemporaryPassword: cognitoPassword,
+        }));
+        const sub = createResp.User?.Attributes?.find((a) => a.Name === 'sub')?.Value ?? '';
+        await this.cognitoClient.send(new client_cognito_identity_provider_1.AdminSetUserPasswordCommand({
+            UserPoolId: cognitoUserPoolId,
+            Username: e164Phone,
+            Password: cognitoPassword,
+            Permanent: true,
+        }));
+        return sub;
+    }
+    async rollbackCognitoRegistration(cellphone) {
+        const cognitoUserPoolId = process.env.COGNITO_USER_POOL_ID;
+        if (!cognitoUserPoolId || process.env.MOCK_MODE === 'true') {
+            return;
+        }
+        const e164Phone = cellphone.startsWith('+') ? cellphone : `+591${cellphone}`;
+        try {
+            await this.cognitoClient.send(new client_cognito_identity_provider_1.AdminDeleteUserCommand({
+                UserPoolId: cognitoUserPoolId,
+                Username: e164Phone,
+            }));
+        }
+        catch (err) {
+            console.error('[Rollback Error] Failed to delete user from Cognito:', err.message);
+        }
+    }
     async authenticate(cellphone, pin) {
         const customer = await this.findCustomerByCellphone(cellphone);
         if (!customer) {

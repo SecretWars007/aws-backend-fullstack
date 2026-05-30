@@ -6,6 +6,7 @@ import { ICustomerRepository } from '../domain/repositories/ICustomerRepository'
 import { MockCustomerRepository } from '../adapters/repositories/mock/MockCustomerRepository';
 import { PgCustomerRepository } from '../adapters/repositories/postgres/PgCustomerRepository';
 import { requireBodyDeviceToken } from './middleware/bodyAuthMiddleware';
+import { requireHeaderDeviceToken } from './middleware/headerAuthMiddleware';
 import {
   getExtensionCatalogHandler,
   validateUserHandler,
@@ -71,46 +72,52 @@ export function createApp(): express.Application {
   app.get('/internal/customer/phone/:cellphone', getInternalCustomerByPhoneHandler(repo));
 
   // Register routes (both V1 and V2, upper and lower case)
-  const versions = ['V1', 'V2', 'v1', 'v2'];
+  const v1Versions = ['V1', 'v1'];
+  const v2Versions = ['V2', 'v2'];
 
-  versions.forEach(v => {
-    // 1. Get Extension Catalog
+  // V1 Routes - Require body token
+  v1Versions.forEach(v => {
     app.post(`/${v}/client/device/register/extension/get`, requireBodyDeviceToken, getExtensionCatalogHandler(repo));
     app.post(`/${v}/document-extensions`, requireBodyDeviceToken, getExtensionCatalogHandler(repo));
-
-    // 2. Validate User
     app.post(`/${v}/register/validate/user`, requireBodyDeviceToken, validateUserHandler(repo));
     app.post(`/${v}/users-validate`, requireBodyDeviceToken, validateUserHandler(repo));
-
-    // 3. Validate OTP
     app.post(`/${v}/register/validate/otp`, requireBodyDeviceToken, validateOtpHandler(repo));
     app.post(`/${v}/otp-generate`, requireBodyDeviceToken, validateOtpHandler(repo));
-
-    // 4. Init Face Recognition
     app.post(`/${v}/register/init/face/recognition`, requireBodyDeviceToken, initFaceRecognitionHandler(repo));
     app.post(`/${v}/face-recognition-init`, requireBodyDeviceToken, initFaceRecognitionHandler(repo));
-
-    // 5. Execute Face Recognition
     app.post(`/${v}/register/execute/face/recognition`, requireBodyDeviceToken, executeFaceRecognitionHandler(repo));
     app.post(`/${v}/face-recognition-valid`, requireBodyDeviceToken, executeFaceRecognitionHandler(repo));
-
-    // 6. Register Reference Code
     app.post(`/${v}/client/reference/register/code`, requireBodyDeviceToken, registerReferenceCodeHandler(repo));
     app.post(`/${v}/reference/register`, requireBodyDeviceToken, registerReferenceCodeHandler(repo));
-
-    // 7. Create Account
     app.post(`/${v}/register/create/account`, requireBodyDeviceToken, createAccountHandler(repo, walletServiceUrl));
     app.post(`/${v}/users-create`, requireBodyDeviceToken, createAccountHandler(repo, walletServiceUrl));
-
-    // 8. Login
     app.post(`/${v}/client/login/get`, requireBodyDeviceToken, loginHandler(repo));
     app.post(`/${v}/sign-in`, requireBodyDeviceToken, loginHandler(repo));
-
-    // 9. Get Profile Parameters
     app.post(`/${v}/profile/parameters/get`, requireBodyDeviceToken, getProfileParametersHandler(repo));
     app.post(`/${v}/parameters`, requireBodyDeviceToken, getProfileParametersHandler(repo));
+    app.post(`/${v}/client/reference/welcome`, welcomeReferenceHandler);
+  });
 
-    // 10. Welcome Reference (intentional 404)
+  // V2 Routes - Require header token
+  v2Versions.forEach(v => {
+    app.post(`/${v}/client/device/register/extension/get`, requireHeaderDeviceToken, getExtensionCatalogHandler(repo));
+    app.post(`/${v}/document-extensions`, requireHeaderDeviceToken, getExtensionCatalogHandler(repo));
+    app.post(`/${v}/register/validate/user`, requireHeaderDeviceToken, validateUserHandler(repo));
+    app.post(`/${v}/users-validate`, requireHeaderDeviceToken, validateUserHandler(repo));
+    app.post(`/${v}/register/validate/otp`, requireHeaderDeviceToken, validateOtpHandler(repo));
+    app.post(`/${v}/otp-generate`, requireHeaderDeviceToken, validateOtpHandler(repo));
+    app.post(`/${v}/register/init/face/recognition`, requireHeaderDeviceToken, initFaceRecognitionHandler(repo));
+    app.post(`/${v}/face-recognition-init`, requireHeaderDeviceToken, initFaceRecognitionHandler(repo));
+    app.post(`/${v}/register/execute/face/recognition`, requireHeaderDeviceToken, executeFaceRecognitionHandler(repo));
+    app.post(`/${v}/face-recognition-valid`, requireHeaderDeviceToken, executeFaceRecognitionHandler(repo));
+    app.post(`/${v}/client/reference/register/code`, requireHeaderDeviceToken, registerReferenceCodeHandler(repo));
+    app.post(`/${v}/reference/register`, requireHeaderDeviceToken, registerReferenceCodeHandler(repo));
+    app.post(`/${v}/register/create/account`, requireHeaderDeviceToken, createAccountHandler(repo, walletServiceUrl));
+    app.post(`/${v}/users-create`, requireHeaderDeviceToken, createAccountHandler(repo, walletServiceUrl));
+    app.post(`/${v}/client/login/get`, requireHeaderDeviceToken, loginHandler(repo));
+    app.post(`/${v}/sign-in`, requireHeaderDeviceToken, loginHandler(repo));
+    app.post(`/${v}/profile/parameters/get`, requireHeaderDeviceToken, getProfileParametersHandler(repo));
+    app.post(`/${v}/parameters`, requireHeaderDeviceToken, getProfileParametersHandler(repo));
     app.post(`/${v}/client/reference/welcome`, welcomeReferenceHandler);
   });
 

@@ -30,6 +30,8 @@ export declare class PgCustomerRepository implements ICustomerRepository {
         cognitoSub: string;
         isMarried: boolean;
     }): Promise<void>;
+    registerInCognito(cellphone: string, email: string, pin: string, cic: string, documentNumber: string): Promise<string>;
+    rollbackCognitoRegistration(cellphone: string): Promise<void>;
     authenticate(cellphone: string, pin: string): Promise<{
         privateToken: string;
         customer: Customer;

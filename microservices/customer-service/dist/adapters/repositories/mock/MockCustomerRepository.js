@@ -11,7 +11,7 @@ class MockCustomerRepository {
         this.customers = new Map();
         this.otps = new Map();
         this.faceSessions = new Map();
-        this.nextId = 3;
+        this.nextId = 4;
         // Seed default customer Gustavo Parker for login testing
         const defaultPinHash = crypto_2.default.createHash('sha256').update('123456').digest('hex');
         this.customers.set(3, {
@@ -153,6 +153,12 @@ class MockCustomerRepository {
         customer.lastName = customer.lastName ?? 'PARKER';
         customer.city = customer.city ?? 'Santa Cruz';
         this.customers.set(id, customer);
+    }
+    async registerInCognito(cellphone, email, pin, cic, documentNumber) {
+        return `us-east-1_mock-${crypto_2.default.randomUUID()}`;
+    }
+    async rollbackCognitoRegistration(cellphone) {
+        console.log(`[Mock Repo] Rolled back Cognito registration for ${cellphone}`);
     }
     async authenticate(cellphone, pin) {
         let matchedCustomer = null;

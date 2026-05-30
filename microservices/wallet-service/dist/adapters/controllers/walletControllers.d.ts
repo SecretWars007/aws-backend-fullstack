@@ -1,0 +1,12 @@
+import { Request, Response } from 'express';
+import { IWalletRepository } from '../../domain/repositories/IWalletRepository';
+export declare function getBalancesHandler(repo: IWalletRepository): (req: Request, res: Response) => Promise<void>;
+export declare function getRechargeParamsHandler(repo: IWalletRepository): (req: Request, res: Response) => Promise<void>;
+export declare function rechargeEntelHandler(repo: IWalletRepository): (req: Request, res: Response) => Promise<void>;
+export declare function rechargeTigoHandler(repo: IWalletRepository): (req: Request, res: Response) => Promise<void>;
+export declare function rechargeVivaHandler(repo: IWalletRepository): (req: Request, res: Response) => Promise<void>;
+export declare function transferValidateHandler(repo: IWalletRepository): (req: Request, res: Response) => Promise<void>;
+export declare function transferTokenGenerateHandler(repo: IWalletRepository): (req: Request, res: Response) => Promise<void>;
+export declare function transferExecuteHandler(repo: IWalletRepository): (req: Request, res: Response) => Promise<void>;
+export declare function createInternalWalletHandler(repo: IWalletRepository): (req: Request, res: Response) => Promise<void>;
+export declare function getMovementsHandler(repo: IWalletRepository): (req: Request, res: Response) => Promise<void>;

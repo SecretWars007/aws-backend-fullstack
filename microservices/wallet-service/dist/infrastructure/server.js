@@ -21,3 +21,4 @@ process.on('SIGINT', () => {
         process.exit(0);
     });
 });
+//# sourceMappingURL=server.js.map

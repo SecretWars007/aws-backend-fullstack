@@ -41,6 +41,7 @@ function Invoke-ApiTest {
         [hashtable]$Body = $null,
         [int]$ExpectedStatus = 200,
         [string]$Category = "General",
+        [hashtable]$Headers = $null,
         [switch]$WarnOnFail
     )
 
@@ -68,10 +69,17 @@ function Invoke-ApiTest {
     }
 
     try {
+        $reqHeaders = @{ "Content-Type" = "application/json"; "X-QA-Test" = "true" }
+        if ($Headers) {
+            foreach ($key in $Headers.Keys) {
+                $reqHeaders[$key] = $Headers[$key]
+            }
+        }
+        
         $params = @{
             Uri         = $url
             Method      = $Method
-            Headers     = @{ "Content-Type" = "application/json"; "X-QA-Test" = "true" }
+            Headers     = $reqHeaders
             TimeoutSec  = 30
             ErrorAction = "Stop"
         }
@@ -643,22 +651,30 @@ $null = Invoke-ApiTest -Name "Verify rate limiting is active (not hit 429)" `
 Write-Banner "BLOCK 6 - V2 ALIASES (EXHAUSTIVE)" "Cyan"
 
 Write-Step "6.1" "V2 Customer Service Aliases"
-$null = Invoke-ApiTest -Name "POST /V2/document-extensions" -Method POST -Path "/V2/document-extensions" -Body @{ auth_token = $AUTH_TOKEN; certified_id = $CERTIFIED_ID } -ExpectedStatus 200 -Category "Compat/V2-Aliases"
-$null = Invoke-ApiTest -Name "POST /V2/users-validate" -Method POST -Path "/V2/users-validate" -Body @{ auth_token = $AUTH_TOKEN; certified_id = $CERTIFIED_ID } -ExpectedStatus 400 -Category "Compat/V2-Aliases"
-$null = Invoke-ApiTest -Name "POST /V2/otp-generate" -Method POST -Path "/V2/otp-generate" -Body @{ auth_token = $AUTH_TOKEN; certified_id = $CERTIFIED_ID } -ExpectedStatus 400 -Category "Compat/V2-Aliases"
-$null = Invoke-ApiTest -Name "POST /V2/face-recognition-init" -Method POST -Path "/V2/face-recognition-init" -Body @{ auth_token = $AUTH_TOKEN; certified_id = $CERTIFIED_ID } -ExpectedStatus 400 -Category "Compat/V2-Aliases"
-$null = Invoke-ApiTest -Name "POST /V2/face-recognition-valid" -Method POST -Path "/V2/face-recognition-valid" -Body @{ auth_token = $AUTH_TOKEN; certified_id = $CERTIFIED_ID } -ExpectedStatus 400 -Category "Compat/V2-Aliases"
-$null = Invoke-ApiTest -Name "POST /V2/reference/register" -Method POST -Path "/V2/reference/register" -Body @{ auth_token = $AUTH_TOKEN; certified_id = $CERTIFIED_ID } -ExpectedStatus 400 -Category "Compat/V2-Aliases"
-$null = Invoke-ApiTest -Name "POST /V2/users-create" -Method POST -Path "/V2/users-create" -Body @{ auth_token = $AUTH_TOKEN; certified_id = $CERTIFIED_ID } -ExpectedStatus 400 -Category "Compat/V2-Aliases"
-$null = Invoke-ApiTest -Name "POST /V2/sign-in" -Method POST -Path "/V2/sign-in" -Body @{ auth_token = $AUTH_TOKEN; certified_id = $CERTIFIED_ID } -ExpectedStatus 400 -Category "Compat/V2-Aliases"
+$v2Headers = @{ "Authorization" = "Bearer $AUTH_TOKEN" }
+$null = Invoke-ApiTest -Name "POST /V2/device-identify" -Method POST -Path "/V2/device-identify" -Body @{ certified_id = $CERTIFIED_ID } -Headers $v2Headers -ExpectedStatus 400 -Category "Compat/V2-Aliases"
+$null = Invoke-ApiTest -Name "POST /V2/device-auth" -Method POST -Path "/V2/device-auth" -Body @{ certified_id = $CERTIFIED_ID } -Headers $v2Headers -ExpectedStatus 400 -Category "Compat/V2-Aliases"
+$null = Invoke-ApiTest -Name "POST /V2/document-extensions" -Method POST -Path "/V2/document-extensions" -Body @{ certified_id = $CERTIFIED_ID } -Headers $v2Headers -ExpectedStatus 200 -Category "Compat/V2-Aliases"
+$null = Invoke-ApiTest -Name "POST /V2/users-validate" -Method POST -Path "/V2/users-validate" -Body @{ certified_id = $CERTIFIED_ID } -Headers $v2Headers -ExpectedStatus 400 -Category "Compat/V2-Aliases"
+$null = Invoke-ApiTest -Name "POST /V2/otp-generate" -Method POST -Path "/V2/otp-generate" -Body @{ certified_id = $CERTIFIED_ID } -Headers $v2Headers -ExpectedStatus 400 -Category "Compat/V2-Aliases"
+$null = Invoke-ApiTest -Name "POST /V2/face-recognition-init" -Method POST -Path "/V2/face-recognition-init" -Body @{ certified_id = $CERTIFIED_ID } -Headers $v2Headers -ExpectedStatus 400 -Category "Compat/V2-Aliases"
+$null = Invoke-ApiTest -Name "POST /V2/face-recognition-valid" -Method POST -Path "/V2/face-recognition-valid" -Body @{ certified_id = $CERTIFIED_ID } -Headers $v2Headers -ExpectedStatus 400 -Category "Compat/V2-Aliases"
+$null = Invoke-ApiTest -Name "POST /V2/reference/register" -Method POST -Path "/V2/reference/register" -Body @{ certified_id = $CERTIFIED_ID } -Headers $v2Headers -ExpectedStatus 400 -Category "Compat/V2-Aliases"
+$null = Invoke-ApiTest -Name "POST /V2/users-create" -Method POST -Path "/V2/users-create" -Body @{ certified_id = $CERTIFIED_ID } -Headers $v2Headers -ExpectedStatus 400 -Category "Compat/V2-Aliases"
+$null = Invoke-ApiTest -Name "POST /V2/parameters" -Method POST -Path "/V2/parameters" -Body @{ certified_id = $CERTIFIED_ID } -Headers $v2Headers -ExpectedStatus 200 -Category "Compat/V2-Aliases"
+$null = Invoke-ApiTest -Name "POST /V2/sign-in" -Method POST -Path "/V2/sign-in" -Body @{ certified_id = $CERTIFIED_ID } -Headers $v2Headers -ExpectedStatus 400 -Category "Compat/V2-Aliases"
 
 Write-Step "6.2" "V2 Wallet Service Aliases"
-$null = Invoke-ApiTest -Name "POST /V2/balances" -Method POST -Path "/V2/balances" -Body @{ auth_token = $AUTH_TOKEN; certified_id = $CERTIFIED_ID } -ExpectedStatus 200 -Category "Compat/V2-Aliases"
-$null = Invoke-ApiTest -Name "POST /V2/recharge-params" -Method POST -Path "/V2/recharge-params" -Body @{ auth_token = $AUTH_TOKEN; certified_id = $CERTIFIED_ID } -ExpectedStatus 200 -Category "Compat/V2-Aliases"
-$null = Invoke-ApiTest -Name "POST /V2/recharge-entel" -Method POST -Path "/V2/recharge-entel" -Body @{ auth_token = $AUTH_TOKEN; certified_id = $CERTIFIED_ID } -ExpectedStatus 400 -Category "Compat/V2-Aliases"
-$null = Invoke-ApiTest -Name "POST /V2/transfers/validate" -Method POST -Path "/V2/transfers/validate" -Body @{ auth_token = $AUTH_TOKEN; certified_id = $CERTIFIED_ID } -ExpectedStatus 400 -Category "Compat/V2-Aliases"
-$null = Invoke-ApiTest -Name "POST /V2/token-generate" -Method POST -Path "/V2/token-generate" -Body @{ auth_token = $AUTH_TOKEN; certified_id = $CERTIFIED_ID } -ExpectedStatus 400 -Category "Compat/V2-Aliases"
-$null = Invoke-ApiTest -Name "POST /V2/transfers-execute" -Method POST -Path "/V2/transfers-execute" -Body @{ auth_token = $AUTH_TOKEN; certified_id = $CERTIFIED_ID } -ExpectedStatus 400 -Category "Compat/V2-Aliases"
+$null = Invoke-ApiTest -Name "POST /V2/balances" -Method POST -Path "/V2/balances" -Body @{ certified_id = $CERTIFIED_ID } -Headers $v2Headers -ExpectedStatus 200 -Category "Compat/V2-Aliases"
+$null = Invoke-ApiTest -Name "POST /V2/recharge-params" -Method POST -Path "/V2/recharge-params" -Body @{ certified_id = $CERTIFIED_ID } -Headers $v2Headers -ExpectedStatus 200 -Category "Compat/V2-Aliases"
+$null = Invoke-ApiTest -Name "POST /V2/recharge-entel" -Method POST -Path "/V2/recharge-entel" -Body @{ certified_id = $CERTIFIED_ID } -Headers $v2Headers -ExpectedStatus 400 -Category "Compat/V2-Aliases"
+$null = Invoke-ApiTest -Name "POST /V2/recharge-tigo" -Method POST -Path "/V2/recharge-tigo" -Body @{ certified_id = $CERTIFIED_ID } -Headers $v2Headers -ExpectedStatus 400 -Category "Compat/V2-Aliases"
+$null = Invoke-ApiTest -Name "POST /V2/recharge-viva" -Method POST -Path "/V2/recharge-viva" -Body @{ certified_id = $CERTIFIED_ID } -Headers $v2Headers -ExpectedStatus 400 -Category "Compat/V2-Aliases"
+$null = Invoke-ApiTest -Name "POST /V2/transfers/users-validate" -Method POST -Path "/V2/transfers/users-validate" -Body @{ certified_id = $CERTIFIED_ID } -Headers $v2Headers -ExpectedStatus 400 -Category "Compat/V2-Aliases"
+$null = Invoke-ApiTest -Name "POST /V2/token-generate" -Method POST -Path "/V2/token-generate" -Body @{ certified_id = $CERTIFIED_ID } -Headers $v2Headers -ExpectedStatus 400 -Category "Compat/V2-Aliases"
+$null = Invoke-ApiTest -Name "POST /V2/transfers-execute" -Method POST -Path "/V2/transfers-execute" -Body @{ certified_id = $CERTIFIED_ID } -Headers $v2Headers -ExpectedStatus 400 -Category "Compat/V2-Aliases"
+$null = Invoke-ApiTest -Name "POST /V2/movements" -Method POST -Path "/V2/movements" -Body @{ certified_id = $CERTIFIED_ID } -Headers $v2Headers -ExpectedStatus 200 -Category "Compat/V2-Aliases"
+
 
 # ==============================================================================
 # FINAL REPORT

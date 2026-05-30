@@ -117,7 +117,7 @@ class MockWalletRepository {
             cellphone,
             amount,
             token,
-            expiresAt: new Date(Date.now() + 5 * 60 * 1000), // 5 min expiry
+            expiresAt: new Date(Date.now() + 3 * 60 * 1000), // 3 min expiry
         };
         this.transferSessions.set(`${token}_${customerId}`, session);
         return session;
@@ -198,3 +198,4 @@ class MockWalletRepository {
     }
 }
 exports.MockWalletRepository = MockWalletRepository;
+//# sourceMappingURL=MockWalletRepository.js.map

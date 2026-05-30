@@ -32,3 +32,4 @@ function requireBodyDeviceToken(req, res, next) {
         });
     }
 }
+//# sourceMappingURL=bodyAuthMiddleware.js.map

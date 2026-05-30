@@ -10,3 +10,4 @@ class MovementsUseCase {
     }
 }
 exports.MovementsUseCase = MovementsUseCase;
+//# sourceMappingURL=MovementsUseCase.js.map

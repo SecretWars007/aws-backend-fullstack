@@ -236,3 +236,4 @@ function getMovementsHandler(repo) {
         }
     };
 }
+//# sourceMappingURL=walletControllers.js.map

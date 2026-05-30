@@ -35,7 +35,7 @@ class UsersCreateUseCase {
         if (!parsed.success) {
             throw new Error(`Validation error: ${parsed.error.message}`);
         }
-        const { id, cellphone, cic, home_address, pin, email, is_married } = parsed.data;
+        const { id, cellphone, cic, home_address, pin, email, is_married, document_number } = parsed.data;
         // Check if the user exists
         const customer = await this.customerRepo.findCustomerById(id);
         if (!customer) {
@@ -52,17 +52,33 @@ class UsersCreateUseCase {
         }
         // Hash the PIN (OWASP A02 Cryptographic Failures)
         const pinHash = crypto_1.default.createHash('sha256').update(pin).digest('hex');
-        // In a real system, we register the user in Cognito and get their Sub ID.
-        // In mock mode, we generate a mock Cognito Sub UUID.
-        const cognitoSub = `us-east-1_${crypto_1.default.randomUUID()}`;
-        // Complete the customer registration
-        await this.customerRepo.completeCustomerRegistration(id, {
-            cic,
-            homeAddress: home_address,
-            pinHash,
-            cognitoSub,
-            isMarried: is_married,
-        });
+        // 1. Register the user in Cognito to get their Sub ID
+        let cognitoSub;
+        try {
+            cognitoSub = await this.customerRepo.registerInCognito(cellphone, email, pin, cic, document_number);
+        }
+        catch (err) {
+            if (err.name === 'UsernameExistsException') {
+                throw new Error('USER_ALREADY_EXISTS');
+            }
+            throw new Error(`Cognito Registration Failed: ${err.message}`);
+        }
+        try {
+            // 2. Complete the customer registration in Postgres
+            await this.customerRepo.completeCustomerRegistration(id, {
+                cic,
+                homeAddress: home_address,
+                pinHash,
+                cognitoSub,
+                isMarried: is_married,
+            });
+        }
+        catch (err) {
+            // Rollback Cognito if DB update fails
+            console.error('[DB Update Failed] Rolling back Cognito...', err);
+            await this.customerRepo.rollbackCognitoRegistration(cellphone);
+            throw new Error('ACCOUNT_CREATION_FAILED');
+        }
         // Call the wallet-service to create the wallet cards/account
         try {
             const response = await fetch(`${this.walletServiceUrl}/internal/wallet/create`, {

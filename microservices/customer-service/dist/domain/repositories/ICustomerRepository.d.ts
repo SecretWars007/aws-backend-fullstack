@@ -20,6 +20,8 @@ export interface ICustomerRepository {
     getFaceSession(sessionId: string): Promise<FaceSession | null>;
     deleteFaceSession(sessionId: string): Promise<void>;
     updateReferenceCode(id: number, code: string): Promise<void>;
+    registerInCognito(cellphone: string, email: string, pin: string, cic: string, documentNumber: string): Promise<string>;
+    rollbackCognitoRegistration(cellphone: string): Promise<void>;
     completeCustomerRegistration(id: number, data: {
         cic: string;
         homeAddress: string;

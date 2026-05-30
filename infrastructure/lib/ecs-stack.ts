@@ -243,6 +243,18 @@ export class EcsStack extends cdk.Stack {
       action: elbv2.ListenerAction.forward([deviceTargetGroup]),
     });
 
+    // Rule 1a: Device Flat Aliases
+    this.listener.addAction('DeviceFlatAliasesRule', {
+      priority: 11,
+      conditions: [
+        elbv2.ListenerCondition.pathPatterns([
+          '/*device-identify',
+          '/*device-auth'
+        ]),
+      ],
+      action: elbv2.ListenerAction.forward([deviceTargetGroup]),
+    });
+
     // Rule 2a: Customer paths - register
     this.listener.addAction('CustomerRegisterRule', {
       priority: 20,
@@ -306,7 +318,8 @@ export class EcsStack extends cdk.Stack {
       conditions: [
         elbv2.ListenerCondition.pathPatterns([
           '/*reference/register',
-          '/*sign-in'
+          '/*sign-in',
+          '/*parameters'
         ]),
       ],
       action: elbv2.ListenerAction.forward([customerTargetGroup]),
@@ -326,7 +339,7 @@ export class EcsStack extends cdk.Stack {
       action: elbv2.ListenerAction.forward([walletTargetGroup]),
     });
 
-    // Rule 3b: Wallet paths - transfers
+    // Rule 3b: Wallet paths - transfers (prefix match)
     this.listener.addAction('WalletTransfersRule', {
       priority: 31,
       conditions: [
@@ -335,6 +348,17 @@ export class EcsStack extends cdk.Stack {
           '/V2/transfers/*',
           '/v1/transfers/*',
           '/v2/transfers/*'
+        ]),
+      ],
+      action: elbv2.ListenerAction.forward([walletTargetGroup]),
+    });
+
+    // Rule 3b-alias: Wallet specific alias for /transfers/users-validate (must be before CustomerFlatAliasesRule1 at 25)
+    this.listener.addAction('WalletTransfersValidateRule', {
+      priority: 23,
+      conditions: [
+        elbv2.ListenerCondition.pathPatterns([
+          '/*transfers/users-validate'
         ]),
       ],
       action: elbv2.ListenerAction.forward([walletTargetGroup]),
@@ -364,6 +388,19 @@ export class EcsStack extends cdk.Stack {
           '/*recharge-entel',
           '/*token-generate',
           '/*transfers-execute'
+        ]),
+      ],
+      action: elbv2.ListenerAction.forward([walletTargetGroup]),
+    });
+
+    // Rule 3e: Wallet Flat Aliases 2
+    this.listener.addAction('WalletFlatAliasesRule2', {
+      priority: 36,
+      conditions: [
+        elbv2.ListenerCondition.pathPatterns([
+          '/*recharge-tigo',
+          '/*recharge-viva',
+          '/*movements'
         ]),
       ],
       action: elbv2.ListenerAction.forward([walletTargetGroup]),
